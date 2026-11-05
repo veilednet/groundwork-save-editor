@@ -1,0 +1,3 @@
+customtkinter>=5.2
+zstandard>=0.22
+msgpack>=1.0
