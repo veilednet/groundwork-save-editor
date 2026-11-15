@@ -17,7 +17,12 @@ BG, CARD, ROW, TRACK = "#0f1115", "#15171c", "#232731", "#2e333e"
 ACCENT, ACCENT_HI = "#f2a93b", "#ffbe5c"
 TEXT, MUTED, FILL = "#eceef2", "#8b91a0", "#6b7180"
 GOOD, ERR = "#5bd68a", "#f06a6a"
-FONT = "Segoe UI"
+if sys.platform == "darwin":
+    FONT = "SF Pro Text"
+elif sys.platform.startswith("win"):
+    FONT = "Segoe UI"
+else:
+    FONT = "DejaVu Sans"
 # Labels from the game's own INCOME/EXPENDITURE ledger table in game.exe (1 has no label there).
 CATEGORY_NAMES = {0: "Contract Income", 2: "Gold Sold", 3: "Sold Machines", 4: "New Machines", 5: "Machine Rental",
                   6: "Fuel Cost", 7: "Payroll", 8: "Maintenance", 9: "Tax", 10: "Bank Proceeds",
@@ -56,7 +61,8 @@ def _apply_theme():
     t["CTkScrollableFrame"].update(label_fg_color=c(CARD))
     t["DropdownMenu"].update(fg_color=c(CARD), hover_color=c(ROW), text_color=c(TEXT))
     f = t["CTkFont"]
-    (f if "family" in f else f.setdefault("Windows", {})).update(family=FONT, size=13)
+    for platform in ("Windows", "macOS", "Linux"):
+        f.setdefault(platform, {}).update(family=FONT, size=13)
 
 
 _apply_theme()
@@ -1173,7 +1179,12 @@ class App(ctk.CTk):
 
     def open_backups(self):
         os.makedirs(S.BACKUP_DIR, exist_ok=True)
-        os.startfile(S.BACKUP_DIR)
+        if sys.platform.startswith("win"):
+            os.startfile(S.BACKUP_DIR)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", S.BACKUP_DIR])
+        else:
+            subprocess.run(["xdg-open", S.BACKUP_DIR])
 
 
 if __name__ == "__main__":

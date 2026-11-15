@@ -4,12 +4,22 @@ Format 1 (game <= 0.1.2.1, first byte 0x87): one msgpack envelope with a zstd wo
 Format 2 (game 0.1.3.1+, header format_version 2): an append-only chunk log, see gwformat2.py. Saving a format 2
 file appends a commit, as the game does; format 1 files are still written as format 1.
 """
-import os, re, io, json, struct, hashlib, shutil, time, subprocess, glob
+import os, re, io, json, struct, hashlib, shutil, time, subprocess, glob, sys
 import zstandard, msgpack
 import gwcodec as C
 import gwformat2 as F2
 
-SAVE_DIR = os.path.join(os.environ.get("APPDATA", ""), "groundwork-simulator", "groundwork-simulator", "data", "saves")
+# ------------------------------------------------------------------ save directory
+# Windows:   %APPDATA%\groundwork-simulator\groundwork-simulator\data\saves\slots
+# macOS:     ~/Library/Application Support/com.groundwork-simulator.groundwork-simulator/saves/slots
+# Linux:     ~/.local/share/groundwork-simulator/saves/slots
+if sys.platform.startswith("win"):
+    _base = os.environ.get("APPDATA", "")
+    SAVE_DIR = os.path.join(_base, "groundwork-simulator", "groundwork-simulator", "data", "saves")
+elif sys.platform == "darwin":
+    SAVE_DIR = os.path.expanduser("~/Library/Application Support/com.groundwork-simulator.groundwork-simulator/saves")
+else:
+    SAVE_DIR = os.path.expanduser("~/.local/share/groundwork-simulator/saves")
 SLOT_DIR = os.path.join(SAVE_DIR, "slots")
 BACKUP_DIR = os.path.join(SLOT_DIR, "editor-backups")
 EXT_CAMPAIGN = "groundwork-simulator-campaign-v1"
@@ -79,9 +89,17 @@ def read_head(raw, verify=True):
 
 def game_running():
     try:
-        out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq game.exe", "/NH"], capture_output=True, text=True,
-                             creationflags=0x08000000).stdout
-        return "game.exe" in out.lower()
+        if sys.platform.startswith("win"):
+            out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq game.exe", "/NH"], capture_output=True, text=True,
+                                 creationflags=0x08000000).stdout
+            return "game.exe" in out.lower()
+        else:
+            # macOS / Linux: try pgrep for the game process
+            out = subprocess.run(["pgrep", "-x", "game"], capture_output=True, text=True).stdout
+            if out.strip():
+                return True
+            out = subprocess.run(["pgrep", "-f", "groundwork"], capture_output=True, text=True).stdout
+            return bool(out.strip())
     except Exception:
         return False
 
