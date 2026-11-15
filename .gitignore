@@ -5,3 +5,4 @@ dist/
 *.spec
 *.groundwork-simulator
 *.bak
+.DS_Store
